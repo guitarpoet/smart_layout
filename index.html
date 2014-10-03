@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title></title>
+	<script src="js/jquery.js"></script>
+	<script src="js/layout.js"></script>
+	<script src="js/demo.js"></script>
+	<style>
+		body {
+			padding: 0px 0px;
+			margin: 0px 0px;
+		}
+		.box {
+			width: 100px;
+			height: 100px;
+			float: left;
+			margin-right: 50px;
+			margin-bottom: 50px;
+			background-color: blue;
+		}
+
+		.layout {
+			position: absolute;
+		}
+
+		.container {
+			overflow: hidden;
+			position: relative;
+			min-height: 200px;
+			padding: 50px 50px;
+		}
+	</style>
+	<script>
+		var total = r(10, 20);
+		var mutant = r(total / 10, total / 4);
+		var mutant_min = 30;
+		var mutant_max = 300;
+
+		$(function() {
+			make_boxes(total, mutant, mutant_min, mutant_max, $('#layout'), $('#origin'));
+			var c = new Container($('#layout'));
+		});
+	</script>
+</head>
+<body>
+	<div id="layout" class="container">
+	</div>
+	<hr>
+	<div id="origin" class="container">
+	</div>
+</body>
+</html>
