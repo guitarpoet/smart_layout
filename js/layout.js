@@ -14,34 +14,52 @@ function num(x) {
 	return parseInt(x);
 }
 
+SmartContainer = function(container) {
+	this.container = container;
+	self = this;
+	this.boxes().each(function(index, box) {
+		self.layout(index, box);
+	});
+};
+
 FlowContainer = function(container) {
 	this.container = container;
 	self = this;
 	this.boxes().each(function(index, box) {
 		self.layout(index, box);
 	});
-}
+};
 
 FlowContainer.prototype = {
+	prepareBox: function(box) {
+		var b = $(box);
+		b.addClass('layout');
+		return b;
+	},
+	getLast: function(index, box) {
+		if(index == 0) { // If it is the first one, make it at the left top
+			this.place(box, 0, 0);
+			return null;
+		}
+
+		return this.box(index - 1); // Get the last layout box
+	},
+	canPlaceRight: function(last, box) {
+		return last.data('x') + this.boxWidth(last) + this.boxWidth(box) <= this.width();
+	},
 	/**
 	 * The layout function will calculate every box's position relative to the
 	 * inner top left point of the container's content pane. So the padding of
 	 * the container won't count
 	 */
 	layout: function(index, box) {
-		console.info('Layouting {0}'.format(index));
-		var b = $(box);
-		b.addClass('layout');
-		if(index == 0) { // If it is the first one, make it at the left top
-			this.place(box, 0, 0);
+		var b = this.prepareBox(box);
+		var last = this.getLast(index, box);
+		if(!last) // If this is the first one
 			return;
-		}
-
-		var last = this.box(index - 1); // Get the last layout box
-
 		var x = 0;
 		var y = 0;
-		if(last.data('x') + this.boxWidth(last) + this.boxWidth(box) <= this.width()) {
+		if(this.canPlaceRight(last, box)) {
 			// We can layout this at the right of the last
 			x = last.data('x') + this.boxWidth(last); // Place the box at the right of the last box
 			y = last.data('y'); // This box will be at the same y position of the last box
@@ -83,6 +101,9 @@ FlowContainer.prototype = {
 		this.place(box, x, y);
 	},
 
+	/**
+	 * Calculate the Y position of the box using the flow layout algorithm
+	 */
 	calY: function(index, x, w) {
 		var y = 0;
 		for(var i = 0; i < index; i++) {
@@ -169,4 +190,42 @@ FlowContainer.prototype = {
 	boxCount: function() {
 		return this.boxes().length;
 	}
+};
+
+$.extend(SmartContainer.prototype, FlowContainer.prototype); // Let SmartContainer extends FlowContainer
+
+SmartContainer.prototype.layout = function(index, box) { // Replacing the layout algorithm
+	var b = this.prepareBox(box);
+	var last = this.getLast(index, box);
+	if(!last) // If this is the first one, we have already place it
+		return;
+
+	var x = 0;
+	var y = 0;
+	if(this.canPlaceRight(last, box)) {
+		// We can layout this at the right of the last
+		x = last.data('x') + this.boxWidth(last); // Place the box at the right of the last box
+		y = this.calY(index, x, this.boxWdith(box));
+		//y = last.data('y'); // This box will be at the same y position of the last box
+	}
+	else {
+		x = 0;
+		y = this.calY(index, x, this.boxWidth(box));
+	}
+	this.place(box, x, y);
+}
+
+SmartContainer.prototype.calY = function(index, x, w) {
+	var y = 0;
+	for(var i = 0; i < index; i++) {
+		var b = $(this.box(i));
+		if(x + w <= b.data('x')) { // If this box is at the right position of this box, ignore it
+			continue;
+		}
+		if(b.data('y') + this.boxHeight(b) > y) { // If this is deeper than the last y
+			y = b.data('y') + this.boxHeight(b);
+			console.info('Y is {0}'.format(y));
+		}
+	}
+	return y;
 }
