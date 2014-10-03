@@ -113,10 +113,21 @@ FlowContainer.prototype = {
 			}
 			if(b.data('y') + this.boxHeight(b) > y) { // If this is deeper than the last y
 				y = b.data('y') + this.boxHeight(b);
-				console.info('Y is {0}'.format(y));
 			}
 		}
 		return y;
+	},
+
+	boxesAtX: function(index, x) {
+		var boxes = [];
+		for(var i = 0; i < index; i++) {
+			var b = $(this.box(i));
+			var bx = b.data('x');
+			if(bx <= x && bx + this.boxWidth(b) >= x) {
+				boxes.push(b);
+			}
+		}
+		return boxes;
 	},
 
 	/**
@@ -153,6 +164,48 @@ FlowContainer.prototype = {
 
 	boxes: function() {
 		return this.container.children('.box');
+	},
+
+	hit: function(x, y, index, box) {
+		if(x + this.boxWidth(box) > this.width()) { // Test boundary hit first
+			return true;
+		}
+
+		for(var i = 0; i < index; i++) {
+			var b = $(this.box(i));
+			var bx = b.data('x');
+			var by = b.data('y');
+
+			if(bx == x && by == y)
+				return true;
+
+			if(bx > x) {
+				if(bx - x < this.boxWidth(box)) {
+					if(by > y) {
+						if(by - y < this.boxHeight(box))
+							return true;
+					}
+					else {
+						if(y - by < this.boxHeight(b))
+							return true;
+					}
+				}
+			}
+			else {
+				if(x - bx < this.boxWidth(b)) {
+					if(by > y) {
+						if(by - y < this.boxHeight(box))
+							return true;
+					}
+					else {
+						if(y - by < this.boxHeight(b))
+							return true;
+
+					}
+				}
+			}
+		}
+		return false;
 	},
 
 	/**
@@ -202,29 +255,59 @@ SmartContainer.prototype.layout = function(index, box) { // Replacing the layout
 
 	var x = 0;
 	var y = 0;
-	if(this.canPlaceRight(last, box)) {
+
+	console.info('Layouting box {0}'.format(index));
+	if(this.canPlaceRight(last, box)) { // Flow left has the highest priority
 		// We can layout this at the right of the last
 		x = last.data('x') + this.boxWidth(last); // Place the box at the right of the last box
-		y = this.calY(index, x, this.boxWdith(box));
-		//y = last.data('y'); // This box will be at the same y position of the last box
+		y = this.calY(index, x, box);
+		if(y != -1 && !this.hit(x, y, index, box)) {
+			console.info('Box {0} placed by flow left x = {1}, y = {2}'.format(index, x, y));
+			this.place(box, x, y);
+			return;
+		}
 	}
-	else {
+	var ty = this.calY(index, 0, box);
+	// We can't do flow left, since we hit the boundary, try with all the layouted boxes
+	for(var i = 0; i < index; i++) {
+		var tb = $(this.box(i));
+		x = tb.data('x') + this.boxWidth(tb); // Let box at the right side of this box
+		y = this.calY(index, x ,box);
+		if(y != -1) {
+			if(y >= ty) { // If this is deeper than the new row
+				y = -1;
+			}
+			else {
+				break;
+			}
+		}
+	}
+	if(y == -1) { // The box can't be at the right side of any box, just place it at the left
 		x = 0;
-		y = this.calY(index, x, this.boxWidth(box));
+		y = ty;
+		console.info('Box {0} placed next row x = {1}, y = {2}'.format(index, x, y));
 	}
+
 	this.place(box, x, y);
 }
 
-SmartContainer.prototype.calY = function(index, x, w) {
-	var y = 0;
-	for(var i = 0; i < index; i++) {
-		var b = $(this.box(i));
-		if(x + w <= b.data('x')) { // If this box is at the right position of this box, ignore it
-			continue;
-		}
-		if(b.data('y') + this.boxHeight(b) > y) { // If this is deeper than the last y
-			y = b.data('y') + this.boxHeight(b);
-			console.info('Y is {0}'.format(y));
+SmartContainer.prototype.calY = function(index, x, box) {
+	var y = -1;
+	var hit = this.hit(x, y, index, box);
+	if(!hit) // Always gave y = 0 a try
+		return 0;
+
+	var boxes = this.boxesAtX(index, x); // Get all the boxes at this x position
+	boxes = boxes.concat(this.boxesAtX(index, x + this.boxWidth(box)));
+	for(var j = 0; j < boxes.length; j++) {
+		var ttb = $(boxes[j]);
+		var ty = ttb.data('y') + this.boxHeight(ttb); // Try to put this box under the box
+		console.info('Calculating ty {3} of box {4} for box {0} at x {1} is {2}'.format(index, x, y, ty, ttb.text()));
+		if(!this.hit(x, ty, index, box)) { // We found the position
+			if(y == -1 || ty < y) {
+				y = ty;
+				console.info('Calculating y for box {0} at x {1} is {2}'.format(index, x, y));
+			}
 		}
 	}
 	return y;

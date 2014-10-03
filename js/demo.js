@@ -26,6 +26,7 @@ function make_boxes(total, mutant, mutant_min, mutant_max, container, copy) {
 	var mc = 0;
 	for(var i = 0; i < total; i++) {
 		var box = e('div', 'box');
+		box.text(i);
 		var rand = random(3);
 
 		if(rand && mc < mutant) { // We need to mutant this box
