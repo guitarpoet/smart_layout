@@ -51,15 +51,15 @@ function make_boxes(total, mutant, mutant_min, mutant_max, container, copy) {
 	}
 }
 
-Container = function(container) {
+FlowContainer = function(container) {
 	this.container = container;
 	self = this;
-	container.children('.box').each(function(index, box) {
+	this.boxes().each(function(index, box) {
 		self.layout(index, box);
 	});
 }
 
-Container.prototype = {
+FlowContainer.prototype = {
 	/**
 	 * The layout function will calculate every box's position relative to the
 	 * inner top left point of the container's content pane. So the padding of
