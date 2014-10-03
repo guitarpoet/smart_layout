@@ -97,13 +97,42 @@ Container.prototype = {
 			}
 
 			if(block_box.length) { // If we do have block box
+				// Find the rightmost block box
+				var right = null;
+				var rx = 0;
+				$(block_box).each(function(i, block) {
+					if(block.data('x') >= rx) {
+						right = block;
+						rx = block.data('x');
+					}
+				});
+
+				// The box must beside the rightmost block box
+				x = right.data('x') + this.boxWidth(right);
+				y = this.calY(index, x, this.boxWidth(box));
 			}
 			else { // There is no box that block this box, we can make it the left most
 				x = 0;
+				y = this.calY(index, x, this.boxWidth(box));
 			}
 		}
 
 		this.place(box, x, y);
+	},
+
+	calY: function(index, x, w) {
+		var y = 0;
+		for(var i = 0; i < index; i++) {
+			var b = $(this.box(i));
+			if(b.data('x') + this.boxWidth(b) <= x) { // If this box is at the left position of this box, ignore it
+				continue;
+			}
+			if(b.data('y') + this.boxHeight(b) > y) { // If this is deeper than the last y
+				y = b.data('y') + this.boxHeight(b);
+				console.info('Y is {0}'.format(y));
+			}
+		}
+		return y;
 	},
 
 	/**
@@ -138,11 +167,15 @@ Container.prototype = {
 		return this.container.width();
 	},
 
+	boxes: function() {
+		return this.container.children('.box');
+	},
+
 	/**
 	 * Getting the box of the index
 	 */
 	box: function(index) {
-		return this.container.children('.box').eq(index);
+		return this.boxes().eq(index);
 	},
 
 	/**
@@ -163,7 +196,7 @@ Container.prototype = {
 		var b = $(box);
 		return num(b.height()) + 
 			num(b.css('padding-top')) + num(b.css('padding-bottom')) + 
-			num(b.css('margin-left') + num(b.css('margin-bottom')))
+			num(b.css('margin-left')) + num(b.css('margin-bottom'))
 			
 	},
 
@@ -171,6 +204,6 @@ Container.prototype = {
 	 * The total count of the boxes
 	 */
 	boxCount: function() {
-		return this.container.children('.box').length;
+		return this.boxes().length;
 	}
 }
