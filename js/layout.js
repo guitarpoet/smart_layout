@@ -256,36 +256,31 @@ SmartContainer.prototype.layout = function(index, box) { // Replacing the layout
 	var x = 0;
 	var y = 0;
 
-	console.info('Layouting box {0}'.format(index));
 	if(this.canPlaceRight(last, box)) { // Flow left has the highest priority
 		// We can layout this at the right of the last
 		x = last.data('x') + this.boxWidth(last); // Place the box at the right of the last box
 		y = this.calY(index, x, box);
 		if(y != -1 && !this.hit(x, y, index, box)) {
-			console.info('Box {0} placed by flow left x = {1}, y = {2}'.format(index, x, y));
 			this.place(box, x, y);
 			return;
 		}
 	}
 	var ty = this.calY(index, 0, box);
+	y = ty;
 	// We can't do flow left, since we hit the boundary, try with all the layouted boxes
 	for(var i = 0; i < index; i++) {
 		var tb = $(this.box(i));
 		x = tb.data('x') + this.boxWidth(tb); // Let box at the right side of this box
-		y = this.calY(index, x ,box);
-		if(y != -1) {
-			if(y >= ty) { // If this is deeper than the new row
-				y = -1;
-			}
-			else {
+		my = this.calY(index, x ,box);
+		if(my != -1) {
+			if(my < y) {
+				y = my;
 				break;
 			}
 		}
 	}
-	if(y == -1) { // The box can't be at the right side of any box, just place it at the left
+	if(y == ty) { // The box can't be at the right side of any box, just place it at the left
 		x = 0;
-		y = ty;
-		console.info('Box {0} placed next row x = {1}, y = {2}'.format(index, x, y));
 	}
 
 	this.place(box, x, y);
@@ -302,11 +297,9 @@ SmartContainer.prototype.calY = function(index, x, box) {
 	for(var j = 0; j < boxes.length; j++) {
 		var ttb = $(boxes[j]);
 		var ty = ttb.data('y') + this.boxHeight(ttb); // Try to put this box under the box
-		console.info('Calculating ty {3} of box {4} for box {0} at x {1} is {2}'.format(index, x, y, ty, ttb.text()));
 		if(!this.hit(x, ty, index, box)) { // We found the position
 			if(y == -1 || ty < y) {
 				y = ty;
-				console.info('Calculating y for box {0} at x {1} is {2}'.format(index, x, y));
 			}
 		}
 	}

@@ -45,14 +45,23 @@
 
 		$(function() {
 			make_boxes(total, mutant, mutant_min, mutant_max, $('#layout'), $('#origin'));
-			var c = new SmartContainer($('#layout'));
+			$("#click").click(function(){
+				console.time('test');
+				var c = new SmartContainer($('#layout'));
+				console.timeEnd('test');
+			});
 		});
 	</script>
 </head>
 <body>
-	<div id="layout" class="container">
+	<div class="action">
+		<button id="click">Layout</button>
 	</div>
-	<div id="origin" class="container">
+	<div id="wrapper">
+		<div id="layout" class="container">
+		</div>
+		<div id="origin" class="container">
+		</div>
 	</div>
 </body>
 </html>
