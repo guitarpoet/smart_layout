@@ -17,6 +17,8 @@ function num(x) {
 SmartContainer = function(container) {
 	this.container = container;
 	self = this;
+	this.boxHeights = {};
+	this.boxWidths = {};
 	this.boxes().each(function(index, box) {
 		self.layout(index, box);
 	});
@@ -25,6 +27,8 @@ SmartContainer = function(container) {
 FlowContainer = function(container) {
 	this.container = container;
 	self = this;
+	this.boxHeights = {};
+	this.boxWidths = {};
 	this.boxes().each(function(index, box) {
 		self.layout(index, box);
 	});
@@ -54,6 +58,7 @@ FlowContainer.prototype = {
 	 */
 	layout: function(index, box) {
 		var b = this.prepareBox(box);
+		b.index = index;
 		var last = this.getLast(index, box);
 		if(!last) // If this is the first one
 			return;
@@ -119,14 +124,28 @@ FlowContainer.prototype = {
 	},
 
 	boxesAtX: function(index, x) {
-		var boxes = [];
-		for(var i = 0; i < index; i++) {
+		if(!this.boxesAtX) {
+			this.boxesAtX = {};
+		}
+
+		var boxes = null;
+		var i = 0;
+		if(this.boxesAtX[x]) {
+			i = this.boxesAtX[x][0];
+			boxes = this.boxesAtX[x][1];
+		}
+		else {
+			boxes = [];
+		}
+
+		for(;i < index; i++) {
 			var b = $(this.box(i));
 			var bx = b.data('x');
 			if(bx <= x && bx + this.boxWidth(b) >= x) {
 				boxes.push(b);
 			}
 		}
+		this.boxesAtX[x] = [index, boxes];
 		return boxes;
 	},
 
@@ -212,7 +231,9 @@ FlowContainer.prototype = {
 	 * Getting the box of the index
 	 */
 	box: function(index) {
-		return this.boxes().eq(index);
+		var ret = this.boxes().eq(index);
+		ret.index = index;
+		return ret;
 	},
 
 	/**
@@ -220,9 +241,14 @@ FlowContainer.prototype = {
 	 */
 	boxWidth: function(box) {
 		var b = $(box);
-		return num(b.width()) + 
+		var x = b.index;
+		var ret = this.boxWidths[x];
+		if(ret)
+			return ret;
+		ret = num(b.width()) + 
 			num(b.css('padding-left')) + num(b.css('padding-right')) + 
 			num(b.css('margin-left')) + num(b.css('margin-right'))
+		this.boxWidths[x] = ret;
 			
 	},
 
@@ -231,9 +257,15 @@ FlowContainer.prototype = {
 	 */
 	boxHeight: function(box) {
 		var b = $(box);
-		return num(b.height()) + 
+		var x = b.index;
+		var ret = this.boxHeights[x];
+		if(ret)
+			return ret;
+		ret = num(b.height()) + 
 			num(b.css('padding-top')) + num(b.css('padding-bottom')) + 
 			num(b.css('margin-left')) + num(b.css('margin-bottom'))
+		this.boxHeights[x] = ret;
+		return ret;
 			
 	},
 
