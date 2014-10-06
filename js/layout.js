@@ -125,11 +125,12 @@ FlowContainer.prototype = {
 
 				var bs = this.xpos[posx];
 				var self = this;
-				$(bs).each(function(index, b) {
+				for(var i = 0; i < bs.length; i++) {
+					var b = bs[i];
 					if(posx + self.boxWidth(b) > x) {
 						boxes.push(b);
 					}
-				});
+				}
 			}
 		}
 		return boxes;
@@ -318,7 +319,10 @@ SmartContainer.prototype.layout = function(index, box) { // Replacing the layout
 		tx = tb.get(0).x + this.boxWidth(tb); // Let box at the right side of this box
 		var my = this.calY(index, tx ,box);
 		if(my != -1) {
-			if(y == -1 || my < y) {
+			if(y == -1 || // Y is not set
+				my < y || // Y at this postion is better
+				(my == y && tx < x)) { // The Y position is the same, but x is better
+
 				y = my;
 				x = tx;
 			}
