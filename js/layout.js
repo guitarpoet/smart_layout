@@ -194,7 +194,7 @@ FlowContainer.prototype = {
 			return true;
 
 		if(bx > x) {
-			if(bx - x < this.w) {
+			if(bx - x < w) {
 				if(by > y) {
 					if(by - y < h)
 						return true;
@@ -227,16 +227,21 @@ FlowContainer.prototype = {
 			return true;
 		}
 
-		for(var i = 0; i < index; i++) {
-			var b = $(this.box(i));
-			var w = this.boxWidth(box);
-			var h = this.boxHeight(box);
-			var bx = b.get(0).x;
-			var by = b.get(0).y;
-			var bw = this.boxWidth(b);
-			var bh = this.boxHeight(b);
-			if(this.testHit(x, y, bx, by, w, h, bw, bh))
-				return true;
+		var w = this.boxWidth(box);
+		var h = this.boxHeight(box);
+		for(var px in this.xpos) {
+			if(px > x + w)
+				break;
+			var boxes = this.xpos[px];
+			for(var i = 0; i < boxes.length; i++) {
+				var b = $(boxes[i]);
+				var bx = b.get(0).x;
+				var by = b.get(0).y;
+				var bw = this.boxWidth(b);
+				var bh = this.boxHeight(b);
+				if(this.testHit(x, y, bx, by, w, h, bw, bh))
+					return true;
+			}
 		}
 		return false;
 	},
@@ -289,7 +294,6 @@ FlowContainer.prototype = {
 SmartContainer = function(container) {
 	this.container = container;
 	self = this;
-	this.pos = {};
 	this.boxes().each(function(index, box) {
 		self.layout(index, box);
 	});
@@ -325,25 +329,15 @@ SmartContainer.prototype.layout = function(index, box) { // Replacing the layout
 }
 
 SmartContainer.prototype.calY = function(index, x, box) {
-	var y = 0;
-	var hit = this.hit(x, y, index, box); // Always gave y = 0 a try
-
-	if(!hit) 
+	var y = -1;
+	if(!this.hit(x, 0, index, box)) // Always gave y = 0 a try
 		return 0;
 
-	y = -1;
-
 	var boxes = this.boxesAtX(index, x); // Get all the boxes at this x position
-	boxes = boxes.concat(this.boxesAtX(index, x + this.boxWidth(box)));
+	boxes = jQuery.unique(boxes.concat(this.boxesAtX(index, x + this.boxWidth(box))));
 	for(var j = 0; j < boxes.length; j++) {
 		var ttb = $(boxes[j]);
-		var ty = ttb.get(0).y; // Try to put this box bside the box
-		if(!this.hit(x, ty, index, box)) { // We found the position
-			if(y == -1 || ty < y) {
-				y = ty;
-			}
-		}
-		ty = ttb.get(0).y + this.boxHeight(ttb); // Try to put this box under the box
+		var ty = ttb.get(0).y + this.boxHeight(ttb); // Try to put this box under the box
 		if(!this.hit(x, ty, index, box)) { // We found the position
 			if(y == -1 || ty < y) {
 				y = ty;
