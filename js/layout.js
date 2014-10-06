@@ -14,32 +14,24 @@ function num(x) {
 	return parseInt(x);
 }
 
-SmartContainer = function(container) {
-	this.container = container;
-	self = this;
-	this.boxHeights = {};
-	this.boxWidths = {};
-	this.boxes().each(function(index, box) {
-		self.layout(index, box);
-	});
-};
-
 FlowContainer = function(container) {
 	this.container = container;
 	self = this;
-	this.boxHeights = {};
-	this.boxWidths = {};
 	this.boxes().each(function(index, box) {
 		self.layout(index, box);
 	});
 };
 
 FlowContainer.prototype = {
+	/**
+	 * Preparing the box for the layout
+	 */
 	prepareBox: function(box) {
 		var b = $(box);
 		b.addClass('layout');
 		return b;
 	},
+
 	getLast: function(index, box) {
 		if(index == 0) { // If it is the first one, make it at the left top
 			this.place(box, 0, 0);
@@ -49,7 +41,8 @@ FlowContainer.prototype = {
 		return this.box(index - 1); // Get the last layout box
 	},
 	canPlaceRight: function(last, box) {
-		return last.data('x') + this.boxWidth(last) + this.boxWidth(box) <= this.width();
+		var lb = $(last).get(0);
+		return lb.x + this.boxWidth(last) + this.boxWidth(box) <= this.width();
 	},
 	/**
 	 * The layout function will calculate every box's position relative to the
@@ -58,7 +51,7 @@ FlowContainer.prototype = {
 	 */
 	layout: function(index, box) {
 		var b = this.prepareBox(box);
-		b.index = index;
+		b.get(0).index = index;
 		var last = this.getLast(index, box);
 		if(!last) // If this is the first one
 			return;
@@ -66,18 +59,18 @@ FlowContainer.prototype = {
 		var y = 0;
 		if(this.canPlaceRight(last, box)) {
 			// We can layout this at the right of the last
-			x = last.data('x') + this.boxWidth(last); // Place the box at the right of the last box
-			y = last.data('y'); // This box will be at the same y position of the last box
+			x = last.get(0).x + this.boxWidth(last); // Place the box at the right of the last box
+			y = last.get(0).y; // This box will be at the same y position of the last box
 		}
 		else {
 			// We must place it next row
 
 			var block_box = [];
-			var top = last.data('y') + this.boxHeight(last); // The box's y location can't be higher than this top
+			var top = last.get(0).y + this.boxHeight(last); // The box's y location can't be higher than this top
 
 			for(var i = 0; i < index - 1; i++) { // Iterating all the boxes before last
 				var tb = $(this.box(i)); // Getting the box
-				if(tb.data('y') + this.boxHeight(tb)> top) { // If some box's bottom is more deeper than the last bottom, this box is block box
+				if(tb.get(0).y + this.boxHeight(tb)> top) { // If some box's bottom is more deeper than the last bottom, this box is block box
 					block_box.push(tb);
 				}
 			}
@@ -87,14 +80,14 @@ FlowContainer.prototype = {
 				var right = null;
 				var rx = 0;
 				$(block_box).each(function(i, block) {
-					if(block.data('x') >= rx) {
+					if(block.get(0).x >= rx) {
 						right = block;
-						rx = block.data('x');
+						rx = block.get(0).x;
 					}
 				});
 
 				// The box must beside the rightmost block box
-				x = right.data('x') + this.boxWidth(right);
+				x = right.get(0).x + this.boxWidth(right);
 				y = this.calY(index, x, this.boxWidth(box));
 			}
 			else { // There is no box that block this box, we can make it the left most
@@ -113,39 +106,32 @@ FlowContainer.prototype = {
 		var y = 0;
 		for(var i = 0; i < index; i++) {
 			var b = $(this.box(i));
-			if(b.data('x') + this.boxWidth(b) <= x) { // If this box is at the left position of this box, ignore it
+			if(b.get(0).x + this.boxWidth(b) <= x) { // If this box is at the left position of this box, ignore it
 				continue;
 			}
-			if(b.data('y') + this.boxHeight(b) > y) { // If this is deeper than the last y
-				y = b.data('y') + this.boxHeight(b);
+			if(b.get(0).y + this.boxHeight(b) > y) { // If this is deeper than the last y
+				y = b.get(0).y + this.boxHeight(b);
 			}
 		}
 		return y;
 	},
 
 	boxesAtX: function(index, x) {
-		if(!this.boxesAtX) {
-			this.boxesAtX = {};
-		}
+		var boxes = [];
+		if(this.xpos) {
+			for(var posx in this.xpos) {
+				if(posx > x)
+					break;
 
-		var boxes = null;
-		var i = 0;
-		if(this.boxesAtX[x]) {
-			i = this.boxesAtX[x][0];
-			boxes = this.boxesAtX[x][1];
-		}
-		else {
-			boxes = [];
-		}
-
-		for(;i < index; i++) {
-			var b = $(this.box(i));
-			var bx = b.data('x');
-			if(bx <= x && bx + this.boxWidth(b) >= x) {
-				boxes.push(b);
+				var bs = this.xpos[posx];
+				var self = this;
+				$(bs).each(function(index, b) {
+					if(posx + self.boxWidth(b) > x) {
+						boxes.push(b);
+					}
+				});
 			}
 		}
-		this.boxesAtX[x] = [index, boxes];
 		return boxes;
 	},
 
@@ -154,11 +140,29 @@ FlowContainer.prototype = {
 	 */
 	place: function(box, x, y) {
 		var b = $(box);
+		var bb = b.get(0);
 
-		b.data('x', x);
-		b.data('y', y);
+		// Updating the x positions of this container
+		if(!this.xpos) {
+			// The xpos property is used to store every box that has locate at this x position
+			this.xpos = {};
+		}
 
+		if(this.xpos[x]) {
+			this.xpos[x].push(b);
+		}
+		else {
+			this.xpos[x] = [b];
+		}
+
+		// Setting the location information to the box itself
+		bb.x = x;
+		bb.y = y
+
+		// Translate the absolute location of the box
 		var r = this.translate(x, y);
+
+		// Position the box
 		b.css('left', r[0]);
 		b.css('top', r[1]);
 	},
@@ -185,6 +189,39 @@ FlowContainer.prototype = {
 		return this.container.children('.box');
 	},
 
+	testHit: function(x, y, bx, by, w, h, bw, bh) {
+		if(bx == x && by == y)
+			return true;
+
+		if(bx > x) {
+			if(bx - x < this.w) {
+				if(by > y) {
+					if(by - y < h)
+						return true;
+				}
+				else {
+					if(y - by < bh)
+						return true;
+				}
+			}
+		}
+		else {
+			if(x - bx < bw) {
+				if(by > y) {
+					if(by - y < h)
+						return true;
+				}
+				else {
+					if(y - by < bh)
+						return true;
+
+				}
+			}
+		}
+
+		return false;
+	},
+
 	hit: function(x, y, index, box) {
 		if(x + this.boxWidth(box) > this.width()) { // Test boundary hit first
 			return true;
@@ -192,37 +229,14 @@ FlowContainer.prototype = {
 
 		for(var i = 0; i < index; i++) {
 			var b = $(this.box(i));
-			var bx = b.data('x');
-			var by = b.data('y');
-
-			if(bx == x && by == y)
+			var w = this.boxWidth(box);
+			var h = this.boxHeight(box);
+			var bx = b.get(0).x;
+			var by = b.get(0).y;
+			var bw = this.boxWidth(b);
+			var bh = this.boxHeight(b);
+			if(this.testHit(x, y, bx, by, w, h, bw, bh))
 				return true;
-
-			if(bx > x) {
-				if(bx - x < this.boxWidth(box)) {
-					if(by > y) {
-						if(by - y < this.boxHeight(box))
-							return true;
-					}
-					else {
-						if(y - by < this.boxHeight(b))
-							return true;
-					}
-				}
-			}
-			else {
-				if(x - bx < this.boxWidth(b)) {
-					if(by > y) {
-						if(by - y < this.boxHeight(box))
-							return true;
-					}
-					else {
-						if(y - by < this.boxHeight(b))
-							return true;
-
-					}
-				}
-			}
 		}
 		return false;
 	},
@@ -241,15 +255,13 @@ FlowContainer.prototype = {
 	 */
 	boxWidth: function(box) {
 		var b = $(box);
-		var x = b.index;
-		var ret = this.boxWidths[x];
-		if(ret)
-			return ret;
+		if(b.get(0).width)
+			return b.get(0).width;
 		ret = num(b.width()) + 
 			num(b.css('padding-left')) + num(b.css('padding-right')) + 
 			num(b.css('margin-left')) + num(b.css('margin-right'))
-		this.boxWidths[x] = ret;
-			
+		b.get(0).width = ret;
+		return ret;
 	},
 
 	/**
@@ -257,16 +269,13 @@ FlowContainer.prototype = {
 	 */
 	boxHeight: function(box) {
 		var b = $(box);
-		var x = b.index;
-		var ret = this.boxHeights[x];
-		if(ret)
-			return ret;
+		if(b.get(0).height)
+			return b.get(0).height;
 		ret = num(b.height()) + 
 			num(b.css('padding-top')) + num(b.css('padding-bottom')) + 
 			num(b.css('margin-left')) + num(b.css('margin-bottom'))
-		this.boxHeights[x] = ret;
+		b.get(0).height = ret;
 		return ret;
-			
 	},
 
 	/**
@@ -277,58 +286,64 @@ FlowContainer.prototype = {
 	}
 };
 
+SmartContainer = function(container) {
+	this.container = container;
+	self = this;
+	this.pos = {};
+	this.boxes().each(function(index, box) {
+		self.layout(index, box);
+	});
+};
+
+
 $.extend(SmartContainer.prototype, FlowContainer.prototype); // Let SmartContainer extends FlowContainer
 
 SmartContainer.prototype.layout = function(index, box) { // Replacing the layout algorithm
 	var b = this.prepareBox(box);
+	b.get(0).index = index; // Saving the index in the box itself
 	var last = this.getLast(index, box);
 	if(!last) // If this is the first one, we have already place it
 		return;
 
 	var x = 0;
-	var y = 0;
-
-	if(this.canPlaceRight(last, box)) { // Flow left has the highest priority
-		// We can layout this at the right of the last
-		x = last.data('x') + this.boxWidth(last); // Place the box at the right of the last box
-		y = this.calY(index, x, box);
-		if(y != -1 && !this.hit(x, y, index, box)) {
-			this.place(box, x, y);
-			return;
-		}
-	}
-	var ty = this.calY(index, 0, box);
-	y = ty;
-	// We can't do flow left, since we hit the boundary, try with all the layouted boxes
-	for(var i = 0; i < index; i++) {
+	var y = this.calY(index, 0, box); // Always begin with x = 0
+	var tx = 0;
+	
+	for(var i = 0; i < index; i++) { // Testing every box
 		var tb = $(this.box(i));
-		x = tb.data('x') + this.boxWidth(tb); // Let box at the right side of this box
-		my = this.calY(index, x ,box);
+		tx = tb.get(0).x + this.boxWidth(tb); // Let box at the right side of this box
+		var my = this.calY(index, tx ,box);
 		if(my != -1) {
-			if(my < y) {
+			if(y == -1 || my < y) {
 				y = my;
-				break;
+				x = tx;
 			}
 		}
-	}
-	if(y == ty) { // The box can't be at the right side of any box, just place it at the left
-		x = 0;
 	}
 
 	this.place(box, x, y);
 }
 
 SmartContainer.prototype.calY = function(index, x, box) {
-	var y = -1;
-	var hit = this.hit(x, y, index, box);
-	if(!hit) // Always gave y = 0 a try
+	var y = 0;
+	var hit = this.hit(x, y, index, box); // Always gave y = 0 a try
+
+	if(!hit) 
 		return 0;
+
+	y = -1;
 
 	var boxes = this.boxesAtX(index, x); // Get all the boxes at this x position
 	boxes = boxes.concat(this.boxesAtX(index, x + this.boxWidth(box)));
 	for(var j = 0; j < boxes.length; j++) {
 		var ttb = $(boxes[j]);
-		var ty = ttb.data('y') + this.boxHeight(ttb); // Try to put this box under the box
+		var ty = ttb.get(0).y; // Try to put this box bside the box
+		if(!this.hit(x, ty, index, box)) { // We found the position
+			if(y == -1 || ty < y) {
+				y = ty;
+			}
+		}
+		ty = ttb.get(0).y + this.boxHeight(ttb); // Try to put this box under the box
 		if(!this.hit(x, ty, index, box)) { // We found the position
 			if(y == -1 || ty < y) {
 				y = ty;
