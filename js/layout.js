@@ -158,7 +158,12 @@ FlowContainer.prototype = {
 
 		// Setting the location information to the box itself
 		bb.x = x;
-		bb.y = y
+		bb.y = y;
+
+		if(!this.box_positions) {
+			this.box_positions = {};
+		}
+		this.box_positions[x + ':' + y] = bb;
 
 		// Translate the absolute location of the box
 		var r = this.translate(x, y);
@@ -228,6 +233,9 @@ FlowContainer.prototype = {
 			return true;
 		}
 
+		if(this.box_positions[x + ':' + y]) { // If we already have a box here
+			return true;
+		}
 		var w = this.boxWidth(box);
 		var h = this.boxHeight(box);
 		for(var px in this.xpos) {
@@ -251,9 +259,7 @@ FlowContainer.prototype = {
 	 * Getting the box of the index
 	 */
 	box: function(index) {
-		var ret = this.boxes().eq(index);
-		ret.index = index;
-		return ret;
+		return this.boxes().eq(index);
 	},
 
 	/**
@@ -304,11 +310,13 @@ SmartContainer = function(container) {
 $.extend(SmartContainer.prototype, FlowContainer.prototype); // Let SmartContainer extends FlowContainer
 
 SmartContainer.prototype.layout = function(index, box) { // Replacing the layout algorithm
+	if(index == 0) { // If this is the first one, place at the left top
+		this.place(box, 0, 0);
+		return;
+	}
+
 	var b = this.prepareBox(box);
 	b.get(0).index = index; // Saving the index in the box itself
-	var last = this.getLast(index, box);
-	if(!last) // If this is the first one, we have already place it
-		return;
 
 	var x = 0;
 	var y = this.calY(index, 0, box); // Always begin with x = 0
@@ -322,7 +330,6 @@ SmartContainer.prototype.layout = function(index, box) { // Replacing the layout
 			if(y == -1 || // Y is not set
 				my < y || // Y at this postion is better
 				(my == y && tx < x)) { // The Y position is the same, but x is better
-
 				y = my;
 				x = tx;
 			}
